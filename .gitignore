@@ -1,0 +1,16 @@
+*.so
+*.swp
+*.dll
+*.a
+*.o
+*.exe
+*.out
+*~
+*.hi
+build
+bin
+doc
+depend
+callgrind*
+vgcore*
+chip8
