@@ -62,7 +62,7 @@ Opcode Chip8::fetchOpcode() const
 {
 	std::cout << "INFO: fetching opcode at "
 			  << std::hex << programCounter << "\n";
-	return (memory[programCounter] << 8) | memory[programCounter + 1];
+	return (memory[programCounter] << 0x8) | memory[programCounter + 0x1];
 }
 
 void Chip8::emulateCycle()
@@ -94,7 +94,7 @@ void Chip8::executeOpcode(Opcode const &opcode)
 		
 		case 0x000E:
 			programCounter = stack[stackPointer];
-			stackPointer -= 1;
+			stackPointer -= 0x1;
 			break;
 		
 		default:
@@ -109,28 +109,28 @@ void Chip8::executeOpcode(Opcode const &opcode)
 	
 	case 0x2000:
 		stack[stackPointer] = programCounter;
-		stackPointer += 1;
+		stackPointer += 0x1;
 		programCounter = opcode & 0x0FFF;
 		break;
 	
 	case 0x3000:
 		if(registers[x] == (opcode & 0x00FF))
 		{
-			programCounter += 2;
+			programCounter += 0x2;
 		}
 		break;
 	
 	case 0x4000:
 		if(registers[x] != (opcode & 0x00FF))
 		{
-			programCounter += 2;
+			programCounter += 0x2;
 		}
 		break;
 	
 	case 0x5000:
 		if(registers[x] == registers[y])
 		{
-			programCounter += 2;
+			programCounter += 0x2;
 		}
 		break;
 	
@@ -164,11 +164,11 @@ void Chip8::executeOpcode(Opcode const &opcode)
 		case 0x0004:
 			if(registers[x] > (0xFF - registers[y]))
 			{
-				registers[0xF] = 1;
+				registers[0xF] = 0x1;
 			}
 			else
 			{
-				registers[0xF] = 0;
+				registers[0xF] = 0x0;
 			}
 			registers[x] += registers[y];
 			break;
@@ -176,23 +176,23 @@ void Chip8::executeOpcode(Opcode const &opcode)
 		case 0x0005:
 			if(registers[x] > registers[y])
 			{
-				registers[0xF] = 1;
+				registers[0xF] = 0x1;
 			}
 			else
 			{
-				registers[0xF] = 0;
+				registers[0xF] = 0x0;
 			}
 			registers[x] -= registers[y];
 			break;
 		
 		case 0x0006:
-			if(registers[x] % 2)
+			if(registers[x] % 0x2)
 			{
-				registers[0xF] = 1;
+				registers[0xF] = 0x1;
 			}
 			else
 			{
-				registers[0xF] = 0;
+				registers[0xF] = 0x0;
 			}
 			registers[x] /= 0x2;
 			break;
@@ -200,11 +200,11 @@ void Chip8::executeOpcode(Opcode const &opcode)
 		case 0x0007:
 			if(registers[x] < registers[y])
 			{
-				registers[0xF] = 1;
+				registers[0xF] = 0x1;
 			}
 			else
 			{
-				registers[0xF] = 0;
+				registers[0xF] = 0x0;
 			}
 			registers[x] = registers[y] - registers[x];
 			break;
@@ -212,13 +212,13 @@ void Chip8::executeOpcode(Opcode const &opcode)
 		case 0x000E:
 			if(registers[x] >> uint16_t(log2(registers[x])))
 			{
-				registers[0xF] = 1;
+				registers[0xF] = 0x1;
 			}
 			else
 			{
-				registers[0xF] = 0;
+				registers[0xF] = 0x0;
 			}
-			registers[x] *= 2;
+			registers[x] *= 0x2;
 			break;
 		}
 		break;
@@ -226,7 +226,7 @@ void Chip8::executeOpcode(Opcode const &opcode)
 	case 0x9000:
 		if(registers[x] != registers[y])
 		{
-			programCounter += 2;
+			programCounter += 0x2;
 		}
 		break;
 	
@@ -249,7 +249,7 @@ void Chip8::executeOpcode(Opcode const &opcode)
 	case 0xE000:
 		if(keypad[registers[x]])
 		{
-			programCounter += 2;
+			programCounter += 0x2;
 		}
 		break;
 	
@@ -282,8 +282,8 @@ void Chip8::executeOpcode(Opcode const &opcode)
 		
 		case 0x0033:
 			memory[addressRegister] = (registers[x] / 100) % 10;
-			memory[addressRegister + 1] = (registers[x] / 10) % 10;
-			memory[addressRegister + 2] = registers[x] % 10;
+			memory[addressRegister + 0x1] = (registers[x] / 10) % 10;
+			memory[addressRegister + 0x2] = registers[x] % 10;
 			break;
 		
 		case 0x0055:
@@ -305,7 +305,7 @@ void Chip8::executeOpcode(Opcode const &opcode)
 		//TODO
 		break;
 	}
-	programCounter += 2;
+	programCounter += 0x2;
 }
 
 void Chip8::updateTimers()
@@ -374,6 +374,7 @@ void Chip8::clearKeypad()
 
 Key Chip8::getKey()
 {
+	std::cout << "INFO: getting key\n";
 	return false;
 	//TODO GETCH
 }
