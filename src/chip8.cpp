@@ -58,29 +58,34 @@ void Chip8::load(std::string const &name)
 void Chip8::emulate()
 {
 	std::cout << "INFO: starting Chip8 emulation\n";
-	std::chrono::system_clock::time_point before =
-		std::chrono::system_clock::now();
-	std::chrono::system_clock::time_point after =
-		std::chrono::system_clock::now();
+	std::chrono::high_resolution_clock::time_point before =
+		std::chrono::high_resolution_clock::now();
+	std::chrono::high_resolution_clock::time_point after =
+		std::chrono::high_resolution_clock::now();
 	emulating = true;
+	std::chrono::duration<double, std::milli> cycle =
+		std::chrono::duration<double, std::milli>(0);
+	std::chrono::duration<double, std::milli> timerCycle =
+		std::chrono::duration<double, std::milli>(0);
 	while(emulating)
 	{
-		before = std::chrono::system_clock::now();
-		std::chrono::duration<double, std::milli> delta = before - after;
-		if(delta.count() < clockPeriod)
+		before = std::chrono::high_resolution_clock::now();
+		if(cycle.count() >= clock)
 		{
-			std::chrono::duration<double, std::milli> deltaMilliSeconds(
-				clockPeriod - delta.count());
-			auto deltaMilliSecondsDuration = std::chrono::duration_cast<
-				std::chrono::milliseconds>(deltaMilliSeconds);
-			std::this_thread::sleep_for(std::chrono::milliseconds(
-				deltaMilliSecondsDuration.count()));
+			std::cout << "INFO: clock " << cycle.count() << "\n";
+			cycle = std::chrono::duration<double, std::milli>(0);
+			emulateCycle();
+			renderWindow();
 		}
-		after = std::chrono::system_clock::now();
-		std::chrono::duration<double, std::milli> sleepTime = after - before;
-		emulateCycle();
-		renderWindow();
-		std::cout << "INFO: clock " << (delta + sleepTime).count() << "\n";
+		if(timerCycle.count() >= timerClock)
+		{
+			std::cout << "INFO: timer clock " << timerCycle.count() << "\n";
+			timerCycle = std::chrono::duration<double, std::milli>(0);
+			updateTimers();
+		}
+		cycle += before - after;
+		timerCycle += before - after;
+		after = std::chrono::high_resolution_clock::now();
 	}
 }
 
@@ -96,7 +101,6 @@ void Chip8::emulateCycle()
 	clearKeypad();
 	setKeypad();
 	executeCurrentOpcode();
-	updateTimers();
 }
 
 void Chip8::executeCurrentOpcode()
@@ -106,6 +110,7 @@ void Chip8::executeCurrentOpcode()
 
 void Chip8::executeOpcode(Opcode const &opcode)
 {
+	programCounter += 0x2;
 	std::cout << "INFO: executing opcode "
 			  << std::hex << opcode << "\n";
 	uint8_t x = (opcode & 0x0F00) >> 0x8;
@@ -113,19 +118,19 @@ void Chip8::executeOpcode(Opcode const &opcode)
 	switch(opcode & 0xF000)
 	{
 	case 0x0000:
-		switch(opcode & 0x000F)
+		switch(opcode & 0x00FF)
 		{
-		case 0x0000:
+		case 0x00E0:
 			clearScreen();
 			break;
 		
-		case 0x000E:
+		case 0x00EE:
 			programCounter = stack[stackPointer];
 			stackPointer -= 0x1;
 			break;
 		
 		default:
-			std::cout << "ERROR: invalid opcode "
+			std::cout << "WARN: unknown opcode "
 					  << std::hex << opcode << "\n";
 			break;
 		}
@@ -136,8 +141,8 @@ void Chip8::executeOpcode(Opcode const &opcode)
 		break;
 	
 	case 0x2000:
-		stack[stackPointer] = programCounter;
 		stackPointer += 0x1;
+		stack[stackPointer] = programCounter;
 		programCounter = opcode & 0x0FFF;
 		break;
 	
@@ -190,67 +195,32 @@ void Chip8::executeOpcode(Opcode const &opcode)
 			break;
 		
 		case 0x0004:
-			if(registers[x] > (0xFF - registers[y]))
-			{
-				registers[0xF] = 0x1;
-			}
-			else
-			{
-				registers[0xF] = 0x0;
-			}
+			registers[0xF] = registers[x] > (0xFF - registers[y]);
 			registers[x] += registers[y];
 			break;
 		
 		case 0x0005:
-			if(registers[x] > registers[y])
-			{
-				registers[0xF] = 0x1;
-			}
-			else
-			{
-				registers[0xF] = 0x0;
-			}
+			registers[0xF] = registers[x] > registers[y];
 			registers[x] -= registers[y];
 			break;
 		
 		case 0x0006:
-			if(registers[x] % 0x2)
-			{
-				registers[0xF] = 0x1;
-			}
-			else
-			{
-				registers[0xF] = 0x0;
-			}
+			registers[0xF] = registers[x] % 0x2;
 			registers[x] /= 0x2;
 			break;
 		
 		case 0x0007:
-			if(registers[x] < registers[y])
-			{
-				registers[0xF] = 0x1;
-			}
-			else
-			{
-				registers[0xF] = 0x0;
-			}
+			registers[0xF] = registers[x] < registers[y];
 			registers[x] = registers[y] - registers[x];
 			break;
 		
 		case 0x000E:
-			if(registers[x] >> uint16_t(log2(registers[x])))
-			{
-				registers[0xF] = 0x1;
-			}
-			else
-			{
-				registers[0xF] = 0x0;
-			}
+			registers[0xF] = (registers[x] & 0xF0) >> 0x4;
 			registers[x] *= 0x2;
 			break;
 		
 		default:
-			std::cout << "ERROR: invalid opcode "
+			std::cout << "WARN: unknown opcode "
 					  << std::hex << opcode << "\n";
 			break;
 		}
@@ -281,7 +251,6 @@ void Chip8::executeOpcode(Opcode const &opcode)
 		uint16_t positionY = registers[y];
 		uint8_t height = opcode & 0x000F;
 		
-		registers[0xF] = 0;
 		for(uint16_t iY = 0x0; iY < height; iY++)
 		{
 			Byte pixel = memory[addressRegister + iY];
@@ -289,11 +258,8 @@ void Chip8::executeOpcode(Opcode const &opcode)
 			{
 				if((pixel & (0x80 >> iX)) != 0x0)
 				{
-					if(screen[(iX + positionX) +
-							 ((iY + positionY) * 0x40)] == 1)
-					{
-						registers[0xF] = 0x1;
-					}
+					registers[0xF] = screen[(iX + positionX) +
+						((iY + positionY) * 0x40)] == 1;
 					screen[(iX + positionX) +
 							 ((iY + positionY) * 0x40)] ^= 0x1;
 				}
@@ -303,9 +269,26 @@ void Chip8::executeOpcode(Opcode const &opcode)
 	}
 	
 	case 0xE000:
-		if(keypad[registers[x]])
+		switch(opcode & 0x00FF)
 		{
-			programCounter += 0x2;
+		case 0x009E:
+			if(keypad[registers[x]])
+			{
+				programCounter += 0x2;
+			}
+			break;
+		
+		case 0x00A1:
+			if(!keypad[registers[x]])
+			{
+				programCounter += 0x2;
+			}
+			break;
+		
+		default:
+			std::cout << "WARN: unknown opcode "
+					  << std::hex << opcode << "\n";
+			break;
 		}
 		break;
 	
@@ -357,18 +340,17 @@ void Chip8::executeOpcode(Opcode const &opcode)
 			break;
 		
 		default:
-			std::cout << "ERROR: invalid opcode "
+			std::cout << "WARN: unknown opcode "
 					  << std::hex << opcode << "\n";
 			break;
 		}
 		break;
 		
 	default:
-		std::cout << "ERROR: invalid opcode "
+		std::cout << "WARN: unknown opcode "
 				  << std::hex << opcode << "\n";
 		break;
 	}
-	programCounter += 0x2;
 }
 
 void Chip8::updateTimers()
@@ -380,10 +362,7 @@ void Chip8::updateTimers()
 	if(soundTimer > 0)
 	{
 		soundTimer -= 1;
-		if(soundTimer == 0)
-		{
-			beep();
-		}
+		beep();
 	}
 }
 
