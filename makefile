@@ -7,7 +7,7 @@ TARGET = chip8
 CPP_FILES = $(shell find $(SOURCE_DIR) -type f -name "*.cpp" -printf '%p ')
 OBJ_FILES = $(addprefix $(OBJ_DIR)/,$(patsubst %.cpp,%.o,$(notdir $(CPP_FILES))))
 
-LIBS = -lsfml-window -lsfml-graphics -lsfml-system
+LIBS = -lsfml-window -lsfml-graphics -lsfml-audio -lsfml-system
 DEBUG_FLAGS = -g -O0 -DDEBUG
 WARNING_FLAGS = -Wall -Wextra
 COMPILER = g++

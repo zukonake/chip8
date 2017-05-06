@@ -6,10 +6,10 @@
 #include <iostream>
 #include <fstream>
 //
-#include <SFML/System.hpp>
 #include <SFML/Graphics.hpp>
+#include <SFML/Audio.hpp>
 //
-#include <chip8.hpp>
+#include "chip8.hpp"
 
 Chip8::Chip8() :
 	emulating(false),
@@ -27,6 +27,7 @@ Chip8::Chip8() :
 	clearScreen();
 	clearKeypad();
 	loadFontSet();
+	loadSound();
 	std::cout << "INFO: created Chip8 object\n";
 }
 
@@ -44,11 +45,14 @@ void Chip8::load(std::string const &name)
 		for(uint16_t i = 0x0; i < size && i < 0x1000 - 0x200; i++)
 		{
 			memory[i + 0x200] = memoryBlock[i];
-			//std::cout << "INFO: loaded byte " << memoryBlock[i] << "\n";
 		}
 		delete[] memoryBlock;
-		std::cout << "INFO: loaded file " << name << "\n";
+		std::cout << "INFO: loaded file "
+				  << name << " with size of "
+				  << size << "\n";
+		return;
 	}
+	std::cout << "ERROR: couldn't open file " << name << "\n";
 }
 
 void Chip8::emulate()
@@ -89,6 +93,7 @@ Opcode Chip8::fetchOpcode() const
 
 void Chip8::emulateCycle()
 {
+	clearKeypad();
 	setKeypad();
 	executeCurrentOpcode();
 	updateTimers();
@@ -120,7 +125,8 @@ void Chip8::executeOpcode(Opcode const &opcode)
 			break;
 		
 		default:
-			//TODO
+			std::cout << "ERROR: invalid opcode "
+					  << std::hex << opcode << "\n";
 			break;
 		}
 		break;
@@ -242,6 +248,11 @@ void Chip8::executeOpcode(Opcode const &opcode)
 			}
 			registers[x] *= 0x2;
 			break;
+		
+		default:
+			std::cout << "ERROR: invalid opcode "
+					  << std::hex << opcode << "\n";
+			break;
 		}
 		break;
 	
@@ -265,8 +276,31 @@ void Chip8::executeOpcode(Opcode const &opcode)
 		break;
 	
 	case 0xD000:
-		//TODO
+	{
+		uint16_t positionX = registers[x];
+		uint16_t positionY = registers[y];
+		uint8_t height = opcode & 0x000F;
+		
+		registers[0xF] = 0;
+		for(uint16_t iY = 0x0; iY < height; iY++)
+		{
+			Byte pixel = memory[addressRegister + iY];
+			for(uint16_t iX = 0x0; iX < 0x8; iX++)
+			{
+				if((pixel & (0x80 >> iX)) != 0x0)
+				{
+					if(screen[(iX + positionX) +
+							 ((iY + positionY) * 0x40)] == 1)
+					{
+						registers[0xF] = 0x1;
+					}
+					screen[(iX + positionX) +
+							 ((iY + positionY) * 0x40)] ^= 0x1;
+				}
+			}
+		}
 		break;
+	}
 	
 	case 0xE000:
 		if(keypad[registers[x]])
@@ -321,10 +355,17 @@ void Chip8::executeOpcode(Opcode const &opcode)
 				registers[i] = memory[addressRegister + i];
 			}
 			break;
+		
+		default:
+			std::cout << "ERROR: invalid opcode "
+					  << std::hex << opcode << "\n";
+			break;
 		}
 		break;
+		
 	default:
-		//TODO
+		std::cout << "ERROR: invalid opcode "
+				  << std::hex << opcode << "\n";
 		break;
 	}
 	programCounter += 0x2;
@@ -354,8 +395,21 @@ void Chip8::loadFontSet()
 	}
 }
 
+void Chip8::loadSound()
+{
+	if(soundBuffer.loadFromFile("beep.wav"))
+	{
+		std::cout << "INFO: loaded beep.wav\n";
+	}
+	else
+	{
+		std::cout << "ERROR: couldn't load beep.wav\n";
+	}
+}
+
 void Chip8::clearMemory()
 {
+	std::cout << "INFO: clearing memory\n";
 	for(uint16_t i = 0x0; i < 0x1000; i++)
 	{
 		memory[i] = 0x0;
@@ -364,6 +418,7 @@ void Chip8::clearMemory()
 
 void Chip8::clearRegisters()
 {
+	std::cout << "INFO: clearing registers\n";
 	for(uint8_t i = 0x0; i < 0x10; i++)
 	{
 		registers[i] = 0x0;
@@ -372,6 +427,7 @@ void Chip8::clearRegisters()
 
 void Chip8::clearStack()
 {
+	std::cout << "INFO: clearing stack\n";
 	for(uint8_t i = 0x0; i < 0x10; i++)
 	{
 		stack[i] = 0x0;
@@ -380,6 +436,7 @@ void Chip8::clearStack()
 
 void Chip8::clearScreen()
 {
+	std::cout << "INFO: clearing screen\n";
 	for(uint16_t i = 0; i < 0x40 * 0x20; i++)
 	{
 		screen[i] = 0x0;
@@ -388,6 +445,7 @@ void Chip8::clearScreen()
 
 void Chip8::clearKeypad()
 {
+	std::cout << "INFO: clearing keypad\n";
 	for(uint8_t i = 0x0; i < 0x10; i++)
 	{
 		keypad[i] = 0x0;
@@ -397,19 +455,154 @@ void Chip8::clearKeypad()
 Key Chip8::getKey()
 {
 	std::cout << "INFO: getting key\n";
-	return 0x0;
-	//TODO GETCH
+	sf::Event keyEvent;
+	while(true)
+	{
+		window.pollEvent(keyEvent);
+		if(keyEvent.type == sf::Event::KeyPressed)
+		{
+			if(keyEvent.key.code == sf::Keyboard::X)
+			{
+				return 0x0;
+			}
+			if(keyEvent.key.code == sf::Keyboard::Num1)
+			{
+				return 0x1;
+			}
+			if(keyEvent.key.code == sf::Keyboard::Num2)
+			{
+				return 0x2;
+			}
+			if(keyEvent.key.code == sf::Keyboard::Num3)
+			{
+				return 0x3;
+			}
+			if(keyEvent.key.code == sf::Keyboard::Q)
+			{
+				return 0x4;
+			}
+			if(keyEvent.key.code == sf::Keyboard::W)
+			{
+				return 0x5;
+			}
+			if(keyEvent.key.code == sf::Keyboard::E)
+			{
+				return 0x6;
+			}
+			if(keyEvent.key.code == sf::Keyboard::A)
+			{
+				return 0x7;
+			}
+			if(keyEvent.key.code == sf::Keyboard::S)
+			{
+				return 0x8;
+			}
+			if(keyEvent.key.code == sf::Keyboard::D)
+			{
+				return 0x9;
+			}
+			if(keyEvent.key.code == sf::Keyboard::Z)
+			{
+				return 0xA;
+			}
+			if(keyEvent.key.code == sf::Keyboard::C)
+			{
+				return 0xB;
+			}
+			if(keyEvent.key.code == sf::Keyboard::Num4)
+			{
+				return 0xC;
+			}
+			if(keyEvent.key.code == sf::Keyboard::R)
+			{
+				return 0xD;
+			}
+			if(keyEvent.key.code == sf::Keyboard::F)
+			{
+				return 0xE;
+			}
+			if(keyEvent.key.code == sf::Keyboard::V)
+			{
+				return 0xF;
+			}
+		}
+	}
 }
 
 void Chip8::setKeypad()
 {
-	//TODO READ KEYS
+	if(sf::Keyboard::isKeyPressed(sf::Keyboard::X))
+	{
+		keypad[0x0] = true;
+	}
+	if(sf::Keyboard::isKeyPressed(sf::Keyboard::Num1))
+	{
+		keypad[0x1] = true;
+	}
+	if(sf::Keyboard::isKeyPressed(sf::Keyboard::Num2))
+	{
+		keypad[0x2] = true;
+	}
+	if(sf::Keyboard::isKeyPressed(sf::Keyboard::Num3))
+	{
+		keypad[0x3] = true;
+	}
+	if(sf::Keyboard::isKeyPressed(sf::Keyboard::Q))
+	{
+		keypad[0x4] = true;
+	}
+	if(sf::Keyboard::isKeyPressed(sf::Keyboard::W))
+	{
+		keypad[0x5] = true;
+	}
+	if(sf::Keyboard::isKeyPressed(sf::Keyboard::E))
+	{
+		keypad[0x6] = true;
+	}
+	if(sf::Keyboard::isKeyPressed(sf::Keyboard::A))
+	{
+		keypad[0x7] = true;
+	}
+	if(sf::Keyboard::isKeyPressed(sf::Keyboard::S))
+	{
+		keypad[0x8] = true;
+	}
+	if(sf::Keyboard::isKeyPressed(sf::Keyboard::D))
+	{
+		keypad[0x9] = true;
+	}
+	if(sf::Keyboard::isKeyPressed(sf::Keyboard::Z))
+	{
+		keypad[0xA] = true;
+	}
+	if(sf::Keyboard::isKeyPressed(sf::Keyboard::C))
+	{
+		keypad[0xB] = true;
+	}
+	if(sf::Keyboard::isKeyPressed(sf::Keyboard::Num4))
+	{
+		keypad[0xC] = true;
+	}
+	if(sf::Keyboard::isKeyPressed(sf::Keyboard::R))
+	{
+		keypad[0xD] = true;
+	}
+	if(sf::Keyboard::isKeyPressed(sf::Keyboard::F))
+	{
+		keypad[0xE] = true;
+	}
+	if(sf::Keyboard::isKeyPressed(sf::Keyboard::V))
+	{
+		keypad[0xF] = true;
+	}
 }
 
 void Chip8::beep()
 {
 	std::cout << "INFO: beep\n";
-	//TODO
+	sf::Sound beep;
+	beep.setBuffer(soundBuffer);
+	beep.play();
 }
 
 void Chip8::renderWindow()

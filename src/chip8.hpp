@@ -3,6 +3,7 @@
 #include <string>
 //
 #include <SFML/Graphics.hpp>
+#include <SFML/Audio.hpp>
 //
 #include <typedef.hpp>
 
@@ -21,6 +22,7 @@ private:
 	void updateTimers();
 	
 	void loadFontSet();
+	void loadSound();
 	
 	void clearMemory();
 	void clearRegisters();
@@ -53,6 +55,7 @@ private:
 	bool keypad[0x10];
 	
 	sf::RenderWindow window;
+	sf::SoundBuffer soundBuffer;
 	const unsigned int pixelSize = 12;
 	
 	/* should be around 17, but 18 gives better results */
