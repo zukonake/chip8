@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ratio>
 #include <string>
 //
 #include <SFML/Graphics.hpp>
@@ -15,6 +16,9 @@ public:
 	void load(std::string const &name);
 	void emulate();
 private:
+	typedef std::ratio< 1, 540 > clockRatio;
+	typedef std::ratio< 1, 60 > timerClockRatio;
+	
 	Opcode fetchOpcode() const;
 	void emulateCycle();
 	void executeCurrentOpcode();
@@ -56,10 +60,9 @@ private:
 	
 	sf::RenderWindow window;
 	sf::SoundBuffer soundBuffer;
+	sf::Sound beepSound;
+
 	const unsigned int pixelSize = 12;
-	
-	const double clock = 2;
-	const double timerClock = 17;
 	
 	const Byte fontSet[0x10 * 0x5] =
 	{

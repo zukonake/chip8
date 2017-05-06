@@ -58,34 +58,36 @@ void Chip8::load(std::string const &name)
 void Chip8::emulate()
 {
 	std::cout << "INFO: starting Chip8 emulation\n";
-	std::chrono::high_resolution_clock::time_point before =
-		std::chrono::high_resolution_clock::now();
-	std::chrono::high_resolution_clock::time_point after =
-		std::chrono::high_resolution_clock::now();
-	emulating = true;
-	std::chrono::duration<double, std::milli> cycle =
-		std::chrono::duration<double, std::milli>(0);
-	std::chrono::duration<double, std::milli> timerCycle =
-		std::chrono::duration<double, std::milli>(0);
-	while(emulating)
+	std::chrono::steady_clock clock;
+	auto cycle = std::chrono::duration<double, clockRatio>(0);
+	auto timerCycle = std::chrono::duration<double, timerClockRatio>(0);
+	auto before = clock.now();
+	auto after = clock.now();
+	while(true)
 	{
-		before = std::chrono::high_resolution_clock::now();
-		if(cycle.count() >= clock)
+		before = clock.now();
+		if(cycle >= std::chrono::duration<double, clockRatio>(1))
 		{
-			std::cout << "INFO: clock " << cycle.count() << "\n";
-			cycle = std::chrono::duration<double, std::milli>(0);
+			std::cout << "INFO: clock "
+				<< std::dec
+				<< std::chrono::duration_cast<std::chrono::microseconds>(
+					cycle).count() << "us\n";
+			cycle = std::chrono::duration<double, clockRatio>(0);
 			emulateCycle();
 			renderWindow();
 		}
-		if(timerCycle.count() >= timerClock)
+		if(timerCycle >= std::chrono::duration<double, timerClockRatio>(1))
 		{
-			std::cout << "INFO: timer clock " << timerCycle.count() << "\n";
-			timerCycle = std::chrono::duration<double, std::milli>(0);
+			std::cout << "INFO: timer clock "
+				<< std::dec
+				<< std::chrono::duration_cast<std::chrono::microseconds>(
+					timerCycle).count() << "us\n";
+			timerCycle = std::chrono::duration<double, timerClockRatio>(0);
 			updateTimers();
 		}
-		cycle += before - after;
-		timerCycle += before - after;
-		after = std::chrono::high_resolution_clock::now();
+		after = clock.now();
+		cycle += std::chrono::duration<double, clockRatio>(after - before);
+		timerCycle += std::chrono::duration<double, timerClockRatio>(after - before);
 	}
 }
 
@@ -98,7 +100,6 @@ Opcode Chip8::fetchOpcode() const
 
 void Chip8::emulateCycle()
 {
-	clearKeypad();
 	setKeypad();
 	executeCurrentOpcode();
 }
@@ -379,6 +380,7 @@ void Chip8::loadSound()
 	if(soundBuffer.loadFromFile("beep.wav"))
 	{
 		std::cout << "INFO: loaded beep.wav\n";
+		beepSound.setBuffer(soundBuffer);
 	}
 	else
 	{
@@ -510,6 +512,7 @@ Key Chip8::getKey()
 
 void Chip8::setKeypad()
 {
+	clearKeypad();
 	if(sf::Keyboard::isKeyPressed(sf::Keyboard::X))
 	{
 		keypad[0x0] = true;
@@ -579,9 +582,7 @@ void Chip8::setKeypad()
 void Chip8::beep()
 {
 	std::cout << "INFO: beep\n";
-	sf::Sound beep;
-	beep.setBuffer(soundBuffer);
-	beep.play();
+	beepSound.play();
 }
 
 void Chip8::renderWindow()
