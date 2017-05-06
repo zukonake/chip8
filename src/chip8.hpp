@@ -58,8 +58,7 @@ private:
 	sf::SoundBuffer soundBuffer;
 	const unsigned int pixelSize = 12;
 	
-	/* should be around 17, but 18 gives better results */
-	const double clockPeriod = 18;
+	const double clockPeriod = 17;
 	
 	const Byte fontSet[0x10 * 0x5] =
 	{
