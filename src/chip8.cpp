@@ -4,6 +4,10 @@
 #include <chrono>
 #include <thread>
 #include <iostream>
+#include <fstream>
+//
+#include <SFML/System.hpp>
+#include <SFML/Graphics.hpp>
 //
 #include <chip8.hpp>
 
@@ -13,7 +17,8 @@ Chip8::Chip8() :
 	programCounter(0x200),
 	stackPointer(0x0),
 	delayTimer(0x0),
-	soundTimer(0x0)
+	soundTimer(0x0),
+	window(sf::VideoMode(0x40 * pixelSize, 0x20 * pixelSize), "Chip-8 Emulator")
 {
 	srand(time(NULL));
 	clearMemory();
@@ -27,7 +32,23 @@ Chip8::Chip8() :
 
 void Chip8::load(std::string const &name)
 {
-	//TODO
+	std::ifstream file;
+	file.open(name, std::ios::binary | std::ios::ate);
+	if(file.is_open())
+	{
+		std::streampos size = file.tellg();
+		char *memoryBlock = new char [size];
+		file.seekg(0, std::ios::beg);
+		file.read(memoryBlock, size);
+		file.close();
+		for(uint16_t i = 0x0; i < size && i < 0x1000 - 0x200; i++)
+		{
+			memory[i + 0x200] = memoryBlock[i];
+			//std::cout << "INFO: loaded byte " << memoryBlock[i] << "\n";
+		}
+		delete[] memoryBlock;
+		std::cout << "INFO: loaded file " << name << "\n";
+	}
 }
 
 void Chip8::emulate()
@@ -54,6 +75,7 @@ void Chip8::emulate()
 		after = std::chrono::system_clock::now();
 		std::chrono::duration<double, std::milli> sleepTime = after - before;
 		emulateCycle();
+		renderWindow();
 		std::cout << "INFO: clock " << (delta + sleepTime).count() << "\n";
 	}
 }
@@ -375,7 +397,7 @@ void Chip8::clearKeypad()
 Key Chip8::getKey()
 {
 	std::cout << "INFO: getting key\n";
-	return false;
+	return 0x0;
 	//TODO GETCH
 }
 
@@ -388,4 +410,22 @@ void Chip8::beep()
 {
 	std::cout << "INFO: beep\n";
 	//TODO
+}
+
+void Chip8::renderWindow()
+{
+	window.clear(sf::Color::Black);
+	sf::RectangleShape rectangle(sf::Vector2f(pixelSize, pixelSize));
+	for(uint16_t iX = 0x0; iX < 0x40; iX++ )
+	{
+		for(uint16_t iY = 0x0; iY < 0x20; iY++ )
+		{
+			if(screen[iX + (iY * 0x40)])
+			{
+				rectangle.setPosition( iX * pixelSize, iY * pixelSize );
+				window.draw(rectangle);
+			}
+		}
+	}
+	window.display();
 }

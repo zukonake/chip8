@@ -7,4 +7,4 @@ typedef uint16_t Address;
 typedef uint16_t Opcode;
 typedef Byte Timer;
 typedef bool Pixel;
-typedef bool Key;
+typedef uint8_t Key;

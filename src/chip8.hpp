@@ -2,6 +2,8 @@
 
 #include <string>
 //
+#include <SFML/Graphics.hpp>
+//
 #include <typedef.hpp>
 
 class Chip8
@@ -31,6 +33,8 @@ private:
 	
 	void beep();
 	
+	void renderWindow();
+	
 	bool emulating;
 	
 	Byte memory[0x1000];
@@ -47,6 +51,9 @@ private:
 	
 	Pixel screen[0x40 * 0x20];
 	bool keypad[0x10];
+	
+	sf::RenderWindow window;
+	const unsigned int pixelSize = 12;
 	
 	/* should be around 17, but 18 gives better results */
 	const double clockPeriod = 18;
