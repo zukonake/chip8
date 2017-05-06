@@ -18,8 +18,12 @@ Chip8::Chip8() :
 	stackPointer(0x0),
 	delayTimer(0x0),
 	soundTimer(0x0),
-	window(sf::VideoMode(0x40 * pixelSize, 0x20 * pixelSize), "Chip-8 Emulator")
+	window(sf::VideoMode(64 * pixelSize, 32 * pixelSize, 2),
+		"Chip-8 Emulator",
+		sf::Style::Close | sf::Style::Titlebar)
 {
+	std::cout << "INFO: created window "
+			  << 64 * pixelSize << "x" << 32 * pixelSize << "\n";
 	srand(time(NULL));
 	clearMemory();
 	clearRegisters();
@@ -58,12 +62,13 @@ void Chip8::load(std::string const &name)
 void Chip8::emulate()
 {
 	std::cout << "INFO: starting Chip8 emulation\n";
+	emulating = true;
 	std::chrono::steady_clock clock;
 	auto cycle = std::chrono::duration<double, clockRatio>(0);
 	auto timerCycle = std::chrono::duration<double, timerClockRatio>(0);
 	auto before = clock.now();
 	auto after = clock.now();
-	while(true)
+	while(emulating)
 	{
 		before = clock.now();
 		if(cycle >= std::chrono::duration<double, clockRatio>(1))
@@ -89,6 +94,7 @@ void Chip8::emulate()
 		cycle += std::chrono::duration<double, clockRatio>(after - before);
 		timerCycle += std::chrono::duration<double, timerClockRatio>(after - before);
 	}
+	std::cout << "INFO: stopping Chip8 emulation\n";
 }
 
 Opcode Chip8::fetchOpcode() const
@@ -506,6 +512,11 @@ Key Chip8::getKey()
 			{
 				return 0xF;
 			}
+			if(keyEvent.key.code == sf::Keyboard::Escape)
+			{
+				emulating = false;
+				return 0x0;
+			}
 		}
 	}
 }
@@ -577,6 +588,10 @@ void Chip8::setKeypad()
 	{
 		keypad[0xF] = true;
 	}
+	if(sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))
+	{
+		emulating = false;
+	}
 }
 
 void Chip8::beep()
@@ -589,13 +604,15 @@ void Chip8::renderWindow()
 {
 	window.clear(sf::Color::Black);
 	sf::RectangleShape rectangle(sf::Vector2f(pixelSize, pixelSize));
+	rectangle.setFillColor(sf::Color::White);
 	for(uint16_t iX = 0x0; iX < 0x40; iX++ )
 	{
 		for(uint16_t iY = 0x0; iY < 0x20; iY++ )
 		{
 			if(screen[iX + (iY * 0x40)])
 			{
-				rectangle.setPosition( iX * pixelSize, iY * pixelSize );
+				rectangle.setPosition( iX * pixelSize,
+									   iY * pixelSize );
 				window.draw(rectangle);
 			}
 		}

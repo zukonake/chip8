@@ -61,8 +61,8 @@ private:
 	sf::RenderWindow window;
 	sf::SoundBuffer soundBuffer;
 	sf::Sound beepSound;
-
-	const unsigned int pixelSize = 12;
+	
+	static const uint16_t pixelSize = 16;
 	
 	const Byte fontSet[0x10 * 0x5] =
 	{
