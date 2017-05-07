@@ -2,24 +2,24 @@ SOURCE_DIR = src
 OBJ_DIR = bin
 DEPEND_DIR = depend
 
-TARGET = chip8
+TARGET = chip8-x64.exe
 
 CPP_FILES = $(shell find $(SOURCE_DIR) -type f -name "*.cpp" -printf '%p ')
 OBJ_FILES = $(addprefix $(OBJ_DIR)/,$(patsubst %.cpp,%.o,$(notdir $(CPP_FILES))))
 
-LIBS = -lsfml-window -lsfml-graphics -lsfml-audio -lsfml-system
+LIBS = -lsfml-audio -lsfml-graphics -lsfml-window -lsfml-system -static -lgcc -lstdc++ -lpthread
 DEBUG_FLAGS = -g -O0 -DDEBUG
 WARNING_FLAGS = -Wall -Wextra
-COMPILER = g++
-COMPILER_FLAGS = -I $(SOURCE_DIR) --std=c++17 -fPIC $(WARNING_FLAGS) $(DEBUG_FLAGS)
+COMPILER = x86_64-w64-mingw32-g++
+COMPILER_FLAGS = -L /usr/x86_64-w64-mingw32/lib -I $(SOURCE_DIR) --std=c++14 $(WARNING_FLAGS) $(DEBUG_FLAGS)
 
 COMPILE = $(COMPILER) $(COMPILER_FLAGS)
-LINK = $(COMPILER) $(COMPILER_FLAGS) $(LIBS) $(OBJ_FILES)
+LINK = $(COMPILER) $(COMPILER_FLAGS) $(OBJ_FILES)
 
 .PHONY : clean
 
 $(TARGET) : $(OBJ_FILES)
-	$(LINK) -o $@
+	$(LINK) -o $@ $(LIBS)
 
 .SECONDEXPANSION:
 $(OBJ_DIR)/%.o : $$(shell find $(SOURCE_DIR) -type f -name %.cpp)
